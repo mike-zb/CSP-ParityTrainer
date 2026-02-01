@@ -1,6 +1,6 @@
 # Cale's CSP tracing trainer
 
-Similar to Squanmate's [parity game](https://squanmate.cuber.pro/#/parity-game) for Cale's CSP tracing, but one color at a time is displayet
+Similar to Squanmate's [parity game](https://squanmate.cuber.pro/#/parity-game) for Cale's CSP tracing, but one color at a time is displayed.
 
 Settings: 
 - Show explanation: from [CubeMaster's video](https://www.youtube.com/watch?v=BLVZlRQMbSU), show the color that gets removed.
