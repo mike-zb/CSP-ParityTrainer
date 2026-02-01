@@ -572,11 +572,6 @@
     manualAdvanceFromInput();
   });
 
-  document.addEventListener("touchend", (e) => {
-    if (!manualMode) return;
-    e.preventDefault(); 
-  }, { passive: false });
-
   loadStats();
   loadConfig();
 
