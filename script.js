@@ -559,18 +559,20 @@
     }
   }, { passive: false });
 
-  document.addEventListener("pointerdown", (e) => {
-    e.preventDefault(); 
+  document.addEventListener("touchstart", (e) => {
     if (!manualMode) return;
-    if (document.body.classList.contains("modalOpen")) return; 
+    if (document.body.classList.contains("modalOpen")) return;
     if (awaitingAnswer) return;
 
     const t = e.target;
-    if (t && (t.closest && (t.closest("button") || t.closest(".modal") || t.closest(".modalBackdrop")))) return;
+    if (t && t.closest && (t.closest("button") || t.closest("input") || t.closest(".modal") || t.closest(".modalBackdrop"))) return;
+
+    e.preventDefault();
 
     if (!running) startRoundManualInitial();
     manualAdvanceFromInput();
-  });
+  }, { passive: false });
+
 
   loadStats();
   loadConfig();
