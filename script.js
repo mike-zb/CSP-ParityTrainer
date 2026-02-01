@@ -435,6 +435,42 @@
     settingsBackdrop.setAttribute("aria-hidden", "true");
   }
 
+  function cleanState() {
+    syncManualUI();
+    saveConfig();
+
+    stopBlink();
+    clearFeedback();
+    resetButtonFeedback();
+    showSingle();
+    setButtonsEnabled(false);
+    awaitingAnswer = false;
+    running = false;
+    responseStartMs = null;
+    resetManualCycleState();
+    singleSwatch.style.background = "rgba(255,255,255,0.06)";
+  }
+
+  function shouldIgnoreManualInputTarget(t) {
+    return !!(t && t.closest && (t.closest("button") || t.closest("input") || t.closest(".modal") || t.closest(".modalBackdrop")));
+  }
+
+  function handleManualAdvanceIntent() {
+    if (!running && !awaitingAnswer) {
+      startRoundManualInitial();
+      return;
+    }
+    manualAdvanceFromInput();
+  }
+
+  function handleManualAnswerOrAdvance(ansIsOdd, sourceBtn) {
+    if (awaitingAnswer) {
+      submitAnswer(ansIsOdd, sourceBtn);
+      return;
+    }
+    handleManualAdvanceIntent();
+  }
+
   openSettingsBtn.addEventListener("click", openModal);
   closeSettingsBtn.addEventListener("click", closeModal);
   settingsBackdrop.addEventListener("click", closeModal);
@@ -461,22 +497,6 @@
     saveConfig();
   });
 
-  function cleanState() {
-    syncManualUI();
-    saveConfig();
-
-    stopBlink();
-    clearFeedback();
-    resetButtonFeedback();
-    showSingle();
-    setButtonsEnabled(false);
-    awaitingAnswer = false;
-    running = false;
-    responseStartMs = null;
-    resetManualCycleState();
-    singleSwatch.style.background = "rgba(255,255,255,0.06)";
-  }
-
   manualSwitchEl.addEventListener("click", () => {
     manualMode = !manualMode;
     cleanState();
@@ -487,12 +507,19 @@
     cleanState();
   });
 
-  btnOdd.addEventListener("click", () => submitAnswer(true, btnOdd));
-  btnEven.addEventListener("click", () => submitAnswer(false, btnEven));
+  btnOdd.addEventListener("click", () => {
+    if (manualMode) handleManualAnswerOrAdvance(true, btnOdd);
+    else submitAnswer(true, btnOdd);
+  });
+
+  btnEven.addEventListener("click", () => {
+    if (manualMode) handleManualAnswerOrAdvance(false, btnEven);
+    else submitAnswer(false, btnEven);
+  });
 
   startBtn.addEventListener("click", () => {
     if (manualMode) {
-      startRoundManualInitial();
+      handleManualAdvanceIntent();
     } else {
       startRoundAuto();
     }
@@ -501,62 +528,52 @@
   resetBtn.addEventListener("click", () => { doFullReset(); });
 
   window.addEventListener("keydown", (e) => {
-    switch (e.code) {
-      case "Space":
-        e.preventDefault();
-        if (manualMode) {
-          if (!awaitingAnswer && !running) startRoundManualInitial();
-          manualAdvanceFromInput();
-        } else {
-          startRoundAuto();
-        }
-        break;
-
-      case "ArrowLeft":
-        if (!btnOdd.disabled) {
-          submitAnswer(true, btnOdd);
-        } else {
-          if (manualMode) {
-            if (!awaitingAnswer) {
-              e.preventDefault();
-              if (!running) startRoundManualInitial();
-              manualAdvanceFromInput();
-            } else if (!running && !awaitingAnswer) {
-              // unreachable
-            }
-          } else {
-            if (!awaitingAnswer && !running) {
-              e.preventDefault();
-              startRoundAuto();
-            }
-          }
-        }
-        break;
-
-      case "ArrowRight":
-        if (!btnEven.disabled) {
-          submitAnswer(false, btnEven);
-        } else {
-          if (manualMode) {
-            if (!awaitingAnswer) {
-              e.preventDefault();
-              if (!running) startRoundManualInitial();
-              manualAdvanceFromInput();
-            }
-          } else {
-            if (!awaitingAnswer && !running) {
-              e.preventDefault();
-              startRoundAuto();
-            }
-          }
-        }
-        break;
-
-      case "KeyR":
-        e.preventDefault();
-        doFullReset();
-        break;
+    if (e.code === "KeyR") {
+      e.preventDefault();
+      doFullReset();
+      return;
     }
+
+    if (manualMode) {
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          handleManualAdvanceIntent();
+          break;
+        case "ArrowLeft":
+          e.preventDefault();
+          handleManualAnswerOrAdvance(true, btnOdd);
+          break;
+        case "ArrowRight":
+          e.preventDefault();
+          handleManualAnswerOrAdvance(false, btnEven);
+          break;
+      }
+    } else {
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          startRoundAuto();
+          break;
+        case "ArrowLeft":
+          if (!btnOdd.disabled) {
+            submitAnswer(true, btnOdd);
+          } else if (!awaitingAnswer && !running) {
+            e.preventDefault();
+            startRoundAuto();
+          }
+          break;
+        case "ArrowRight":
+          if (!btnEven.disabled) {
+            submitAnswer(false, btnEven);
+          } else if (!awaitingAnswer && !running) {
+            e.preventDefault();
+            startRoundAuto();
+          }
+          break;
+      }
+    }
+
   }, { passive: false });
 
   document.addEventListener("touchstart", (e) => {
@@ -565,14 +582,27 @@
     if (awaitingAnswer) return;
 
     const t = e.target;
-    if (t && t.closest && (t.closest("button") || t.closest("input") || t.closest(".modal") || t.closest(".modalBackdrop"))) return;
+    if (shouldIgnoreManualInputTarget(t)) return;
 
     e.preventDefault();
-
-    if (!running) startRoundManualInitial();
-    manualAdvanceFromInput();
+    handleManualAdvanceIntent();
   }, { passive: false });
 
+  let lastTouchEnd = 0;
+
+  document.addEventListener("touchend", (e) => {
+    if (!manualMode) return;
+    if (document.body.classList.contains("modalOpen")) return;
+
+    const t = e.target;
+    if (shouldIgnoreManualInputTarget(t)) return;
+
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      e.preventDefault();
+    }
+    lastTouchEnd = now;
+  }, { passive: false });
 
   loadStats();
   loadConfig();
