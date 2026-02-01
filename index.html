@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Parity Trainer</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app" role="application" aria-label="Parity trainer">
+    <div class="top">
+      <div class="title"><h1>Parity Trainer</h1></div>
+
+      <div class="controlsTop">
+        <button class="gearBtn" id="openSettings" type="button" aria-label="Configuraciones">
+          <span aria-hidden="true">⚙</span>
+          <span class="gearTip">Configuraciones</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="center">
+      <div class="box" aria-live="polite">
+        <div class="single" id="singleStage">
+          <div class="swatch" id="singleSwatch"></div>
+        </div>
+
+        <div class="row" id="rowNormal">
+          <div class="swatch" id="n0"><div class="strikeOverlay"></div></div>
+          <div class="swatch" id="n1"><div class="strikeOverlay"></div></div>
+          <div class="swatch" id="n2"><div class="strikeOverlay"></div></div>
+        </div>
+      </div>
+
+      <div class="answers">
+        <button class="btn" id="btnOdd" disabled>Odd</button>
+        <button class="btn" id="btnEven" disabled>Even</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="help" aria-label="Controls help">
+        Controls:
+        <span class="kbd">Space</span> new round
+        <span class="kbd">←</span> Odd
+        <span class="kbd">→</span> Even
+        <span class="kbd">R</span> reset
+      </div>
+
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+        <button class="startBtn" id="startBtn" type="button">Start</button>
+        <div class="pill">Score: <b id="score">0</b> / <b id="total">0</b></div>
+        <div class="pill">Avg time: <b id="avgTime">0.00</b>s</div>
+        <button class="resetBtn" id="resetScores" type="button">Reset scores</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modalBackdrop" id="settingsBackdrop" aria-hidden="true"></div>
+
+  <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle" aria-hidden="true">
+    <div class="modalCard">
+      <div class="modalHeader">
+        <div class="modalTitle" id="settingsTitle">Settings</div>
+        <button class="iconBtn" id="closeSettings" type="button" aria-label="Close settings">✕</button>
+      </div>
+
+      <div class="modalBody">
+        <div class="settingRow">
+          <div class="settingLabel">Show explanation</div>
+          <div class="toggle">
+            <div class="switch" id="switch">
+              <div class="knob"></div>
+              <input id="explainToggle" type="checkbox" />
+            </div>
+          </div>
+        </div>
+
+        <div class="settingRow">
+          <div class="settingLabel">Manual mode</div>
+          <div class="toggle">
+            <div class="switch" id="manualSwitch">
+              <div class="knob"></div>
+              <input id="manualToggle" type="checkbox" />
+            </div>
+          </div>
+        </div>
+
+        <div class="settingRow" id="delayRow">
+          <div class="settingLabel">Delay</div>
+          <div class="delayWrap">
+            <input id="msRange" type="range" min="150" max="1200" step="50" value="500" />
+            <span class="ms"><span id="msVal">500</span> ms</span>
+          </div>
+        </div>
+
+        <div class="hint">
+          Manual mode: Space / ← / → advance colors. On 3rd color, next ←/→ answers. Tap anywhere on mobile to advance.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
