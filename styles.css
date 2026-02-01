@@ -10,6 +10,9 @@
 html,body{ height:100%; touch-action: manipulation; }
 
 body{
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
   margin:0;
   background: radial-gradient(1200px 700px at 50% 40%, #1a2133 0%, var(--bg) 60%, #0e111a 100%);
   color: var(--text);
