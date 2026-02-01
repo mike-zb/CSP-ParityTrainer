@@ -528,51 +528,52 @@
   resetBtn.addEventListener("click", () => { doFullReset(); });
 
   window.addEventListener("keydown", (e) => {
-    switch (e.code) {
-      case "Space":
-        e.preventDefault();
-        if (manualMode) {
-          handleManualAdvanceIntent();
-        } else {
-          startRoundAuto();
-        }
-        break;
+    if (e.code === "KeyR") {
+      e.preventDefault();
+      doFullReset();
+      return;
+    }
 
-      case "ArrowLeft":
-        if (manualMode) {
+    if (manualMode) {
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          handleManualAdvanceIntent();
+          break;
+        case "ArrowLeft":
           e.preventDefault();
           handleManualAnswerOrAdvance(true, btnOdd);
-        } else {
-          if (!btnOdd.disabled) submitAnswer(true, btnOdd);
-          else {
-            if (!awaitingAnswer && !running) {
-              e.preventDefault();
-              startRoundAuto();
-            }
-          }
-        }
-        break;
-
-      case "ArrowRight":
-        if (manualMode) {
+          break;
+        case "ArrowRight":
           e.preventDefault();
           handleManualAnswerOrAdvance(false, btnEven);
-        } else {
-          if (!btnEven.disabled) submitAnswer(false, btnEven);
-          else {
-            if (!awaitingAnswer && !running) {
-              e.preventDefault();
-              startRoundAuto();
-            }
+          break;
+      }
+    } else {
+      switch (e.code) {
+        case "Space":
+          e.preventDefault();
+          startRoundAuto();
+          break;
+        case "ArrowLeft":
+          if (!btnOdd.disabled) {
+            submitAnswer(true, btnOdd);
+          } else if (!awaitingAnswer && !running) {
+            e.preventDefault();
+            startRoundAuto();
           }
-        }
-        break;
-
-      case "KeyR":
-        e.preventDefault();
-        doFullReset();
-        break;
+          break;
+        case "ArrowRight":
+          if (!btnEven.disabled) {
+            submitAnswer(false, btnEven);
+          } else if (!awaitingAnswer && !running) {
+            e.preventDefault();
+            startRoundAuto();
+          }
+          break;
+      }
     }
+
   }, { passive: false });
 
   document.addEventListener("touchstart", (e) => {
