@@ -70,6 +70,8 @@
 
   let blinkTimer = null;
   let blinkOn = true;
+  let feedbackTimer = null;
+
 
   const PARITIES = new Set([
     "012", "120", "201",
@@ -156,9 +158,18 @@
 
   function clearFeedback() { document.body.classList.remove("ok", "bad"); }
   function flashFeedback(ok) {
+    if (feedbackTimer) {
+      clearTimeout(feedbackTimer);
+      feedbackTimer = null;
+    }
+
     document.body.classList.remove("ok", "bad");
     document.body.classList.add(ok ? "ok" : "bad");
-    setTimeout(clearFeedback, 441);
+
+    feedbackTimer = setTimeout(() => {
+      clearFeedback();
+      feedbackTimer = null;
+    }, 441); 
   }
 
   function showSingle() {
@@ -241,11 +252,15 @@
   }
 
   async function startRoundAuto() {
+
     if (running) return;
 
     stopBlink();
     clearFeedback();
     resetButtonFeedback();
+
+    if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
+
 
     setButtonsEnabled(false);
     awaitingAnswer = false;
@@ -288,6 +303,8 @@
     clearFeedback();
     resetButtonFeedback();
 
+    if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
+
     setButtonsEnabled(false);
     awaitingAnswer = false;
     responseStartMs = null;
@@ -306,6 +323,14 @@
   }
 
   function manualAdvanceFromInput() {
+    if (feedbackTimer) {
+      clearTimeout(feedbackTimer); feedbackTimer = null; 
+    }
+    document.body.classList.remove("ok","bad");
+    btnOdd.classList.remove("ok","bad");
+    btnEven.classList.remove("ok","bad");
+    
+
     if (!running && !awaitingAnswer) {
       startRoundManualInitial();
     }
@@ -535,6 +560,7 @@
   }, { passive: false });
 
   document.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); 
     if (!manualMode) return;
     if (document.body.classList.contains("modalOpen")) return; 
     if (awaitingAnswer) return;
@@ -545,6 +571,11 @@
     if (!running) startRoundManualInitial();
     manualAdvanceFromInput();
   });
+
+  document.addEventListener("touchend", (e) => {
+    if (!manualMode) return;
+    e.preventDefault(); 
+  }, { passive: false });
 
   loadStats();
   loadConfig();
