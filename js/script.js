@@ -79,6 +79,10 @@
     "132", "321", "213"
   ]);
 
+
+  // ===== START CONFIGS =====
+  // #region CONFIGS 
+  // {
   function loadConfig() {
     try {
       const raw = localStorage.getItem(CONFIG_KEY);
@@ -89,7 +93,7 @@
       if (typeof obj.manualMode === "boolean") manualMode = obj.manualMode;
       if (Number.isFinite(obj.ms)) ms = obj.ms;
 
-    } catch { /* ignore */ }
+    } catch { }
   }
 
   function saveConfig() {
@@ -99,27 +103,7 @@
         manualMode,
         ms
       }));
-    } catch { /* ignore */ }
-  }
-
-  function syncManualUI() {
-    manualToggle.checked = manualMode;
-    manualSwitchEl.classList.toggle("on", manualMode);
-
-    delayRow.style.display = manualMode ? "none" : "flex";
-
-    msRange.value = String(ms);
-    msVal.textContent = String(ms);
-
-  }
-
-  function syncExplainUI() {
-    switchEl.classList.toggle("on", explainToggle.checked);
-
-    if (rowNormalEl.style.display !== "none" && currentStrikeIdx !== null) {
-      if (explainToggle.checked) applyBlinkStrike(currentStrikeIdx);
-      else stopBlink();
-    }
+    } catch { }
   }
 
   function loadStats() {
@@ -141,10 +125,30 @@
       }));
     } catch { }
   }
+  // #endregion } 
+  // ===== END CONFIGS =====
 
-  function avgSeconds() {
-    if (!responseCount) return 0;
-    return (responseSumMs / responseCount) / 1000;
+  // ===== START UI =====
+  // #region UI 
+  // { 
+  function syncManualUI() {
+    manualToggle.checked = manualMode;
+    manualSwitchEl.classList.toggle("on", manualMode);
+
+    delayRow.style.display = manualMode ? "none" : "flex";
+
+    msRange.value = String(ms);
+    msVal.textContent = String(ms);
+
+  }
+
+  function syncExplainUI() {
+    switchEl.classList.toggle("on", explainToggle.checked);
+
+    if (rowNormalEl.style.display !== "none" && currentStrikeIdx !== null) {
+      if (explainToggle.checked) applyBlinkStrike(currentStrikeIdx);
+      else stopBlink();
+    }
   }
 
   function renderStats() {
@@ -153,10 +157,7 @@
     avgEl.textContent = avgSeconds().toFixed(2);
   }
 
-  function sleep(t) { return new Promise(r => setTimeout(r, t)); }
-
-  function clearFeedback() { document.body.classList.remove("ok", "bad"); }
-  function flashFeedback(ok) {
+  function screenFlashFeedback(ok) {
     if (feedbackTimer) {
       clearTimeout(feedbackTimer);
       feedbackTimer = null;
@@ -166,16 +167,17 @@
     document.body.classList.add(ok ? "ok" : "bad");
 
     feedbackTimer = setTimeout(() => {
-      clearFeedback();
+      document.body.classList.remove("ok", "bad"); 
       feedbackTimer = null;
     }, 441); 
   }
 
-  function showSingle() {
-    rowNormalEl.style.display = "none";
+  function showNextColor() {
     singleStage.style.display = "flex";
+    rowNormalEl.style.display = "none";
   }
-  function showRow() {
+
+  function showRoundColors() {
     singleStage.style.display = "none";
     rowNormalEl.style.display = "flex";
   }
@@ -189,32 +191,6 @@
       normalSwatches[i].style.background = COLORS[seq[i]].hex;
       normalSwatches[i].classList.remove("strike", "blinkOff");
     }
-  }
-
-  function pick3DistinctFrom4() {
-    const arr = [0, 1, 2, 3];
-    for (let i = arr.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr.slice(0, 3);
-  }
-
-  function inversionParity(seq) {
-    return PARITIES.has(seq.join(""));
-  }
-
-  function strikeIndexByRule(seq) {
-    const isGroupA = (v) => (v === 0 || v === 2);
-    const groupApos = [];
-    const groupBpos = [];
-    for (let i = 0; i < 3; i++) {
-      (isGroupA(seq[i]) ? groupApos : groupBpos).push(i);
-    }
-    const oddPos = (groupApos.length === 1) ? groupApos[0] : groupBpos[0];
-    if (oddPos === 0) return 2;
-    if (oddPos === 1) return 0;
-    return 1;
   }
 
   function stopBlink() {
@@ -245,21 +221,81 @@
     btnEven.disabled = !enabled;
   }
 
-  function resetButtonFeedback() {
+  function clearFeedbackColors() {
+    document.body.classList.remove("ok","bad");
     btnOdd.classList.remove("ok", "bad");
     btnEven.classList.remove("ok", "bad");
   }
 
-  async function startRoundAuto() {
+  function openModal() {
+    document.body.classList.add("modalOpen");
+    settingsModal.setAttribute("aria-hidden", "false");
+    settingsBackdrop.setAttribute("aria-hidden", "false");
+  }
+  function closeModal() {
+    document.body.classList.remove("modalOpen");
+    settingsModal.setAttribute("aria-hidden", "true");
+    settingsBackdrop.setAttribute("aria-hidden", "true");
+  }
+  // #endregion } 
+  // ===== END UI =====
 
-    if (running) return;
+  // ===== START Helpers =====
+  // #region Helpers 
+  // {
+  function sleep(t) { return new Promise(r => setTimeout(r, t)); }
 
+  function strikeIndexByRule(seq) {
+    const isGroupA = (v) => (v === 0 || v === 2);
+    const groupApos = [];
+    const groupBpos = [];
+    for (let i = 0; i < 3; i++) {
+      (isGroupA(seq[i]) ? groupApos : groupBpos).push(i);
+    }
+    const oddPos = (groupApos.length === 1) ? groupApos[0] : groupBpos[0];
+    if (oddPos === 0) return 2;
+    if (oddPos === 1) return 0;
+    return 1;
+  }
+
+  function shouldIgnoreManualInputTarget(t) {
+    return !!(t && t.closest && (t.closest("button") || t.closest("input") || t.closest(".modal") || t.closest(".modalBackdrop")));
+  }
+  // #endregion } 
+  // ===== END Helpers =====
+
+  // ===== START Logic =====
+  // #region Logic 
+  // {
+  function pick3DistinctFrom4() {
+    const arr = [0, 1, 2, 3];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, 3);
+  }
+
+  function inversionParity(seq) {
+    return PARITIES.has(seq.join(""));
+  }
+
+  function avgSeconds() {
+    if (!responseCount) return 0;
+    return (responseSumMs / responseCount) / 1000;
+  }
+  // #endregion } 
+  // ===== END Logic =====
+
+  // ===== START Trainer Flow =====
+  // #region Flow 
+  // {
+
+  function startNormalRound() {
     stopBlink();
-    clearFeedback();
-    resetButtonFeedback();
+    clearFeedbackColors();
 
     if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
-
 
     setButtonsEnabled(false);
     awaitingAnswer = false;
@@ -271,14 +307,25 @@
     currentParity = inversionParity(currentSeq);
     currentStrikeIdx = null;
 
-    showSingle();
+    showNextColor();
 
+    singleSwatch.style.background = "rgba(255,255,255,0.06)";
+  }
+
+  // ----- Auto mode -----
+  async function startRoundAuto() {
+
+    if (running) return;
+
+    startNormalRound();
+
+    await sleep(ms);
     setSingleColor(currentSeq[0]);
-    await sleep(ms);
 
+    await sleep(ms);
     setSingleColor(currentSeq[1]);
-    await sleep(ms);
 
+    await sleep(ms);
     setSingleColor(currentSeq[2]);
 
     responseStartMs = performance.now();
@@ -290,44 +337,26 @@
     running = false;
   }
 
+  // ---- Manual Mode 
+  function startRoundManualInitial() {
+
+    if (running) return;
+
+    startNormalRound();
+
+    resetManualCycleState();
+  }
+
+
   function resetManualCycleState() {
     manualStep = 0;
     manualTimerStarted = false;
-  }
-
-  function startRoundManualInitial() {
-    if (running) return;
-
-    stopBlink();
-    clearFeedback();
-    resetButtonFeedback();
-
-    if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
-
-    setButtonsEnabled(false);
-    awaitingAnswer = false;
-    responseStartMs = null;
-
-    running = true;
-
-    currentSeq = pick3DistinctFrom4();
-    currentParity = inversionParity(currentSeq);
-    currentStrikeIdx = null;
-
-    showSingle();
-
-    resetManualCycleState();
-    setSingleColor(currentSeq[0]); 
-    singleSwatch.style.background = "rgba(255,255,255,0.06)";
   }
 
   function manualAdvanceFromInput() {
     if (feedbackTimer) {
       clearTimeout(feedbackTimer); feedbackTimer = null; 
     }
-    document.body.classList.remove("ok","bad");
-    btnOdd.classList.remove("ok","bad");
-    btnEven.classList.remove("ok","bad");
     
 
     if (!running && !awaitingAnswer) {
@@ -373,8 +402,8 @@
     setButtonsEnabled(false);
 
     total++;
-    const ok = (ansIsOdd === currentParity);
-    if (ok) score++;
+    const isAnswerCorrect = (ansIsOdd === currentParity);
+    if (isAnswerCorrect) score++;
 
     if (responseStartMs != null) {
       const dt = Math.max(0, performance.now() - responseStartMs);
@@ -385,19 +414,16 @@
     renderStats();
     saveStats();
 
-    flashFeedback(ok);
-    sourceBtn.classList.add(ok ? "ok" : "bad");
+    screenFlashFeedback(isAnswerCorrect);
+    sourceBtn.classList.add(isAnswerCorrect ? "ok" : "bad");
 
     fillNormalRow(currentSeq);
-    showRow();
+    showRoundColors();
 
     if (explainToggle.checked) {
       currentStrikeIdx = strikeIndexByRule(currentSeq);
       applyBlinkStrike(currentStrikeIdx);
-    } else {
-      currentStrikeIdx = null;
-      stopBlink();
-    }
+    } 
 
     running = false;
     resetManualCycleState();
@@ -410,48 +436,20 @@
     responseCount = 0;
     saveStats();
     renderStats();
-
-    stopBlink();
-    clearFeedback();
-    resetButtonFeedback();
-    showSingle();
-    setButtonsEnabled(false);
-
-    responseStartMs = null;
-    awaitingAnswer = false;
-    running = false;
-    resetManualCycleState();
-  }
-
-  function openModal() {
-    document.body.classList.add("modalOpen");
-    settingsModal.setAttribute("aria-hidden", "false");
-    settingsBackdrop.setAttribute("aria-hidden", "false");
-  }
-  function closeModal() {
-    document.body.classList.remove("modalOpen");
-    settingsModal.setAttribute("aria-hidden", "true");
-    settingsBackdrop.setAttribute("aria-hidden", "true");
+    cleanState();
   }
 
   function cleanState() {
-    syncManualUI();
-    saveConfig();
-
     stopBlink();
-    clearFeedback();
-    resetButtonFeedback();
-    showSingle();
+    clearFeedbackColors();
+    showNextColor();
     setButtonsEnabled(false);
+
+    responseStartMs = null;
     awaitingAnswer = false;
     running = false;
-    responseStartMs = null;
     resetManualCycleState();
     singleSwatch.style.background = "rgba(255,255,255,0.06)";
-  }
-
-  function shouldIgnoreManualInputTarget(t) {
-    return !!(t && t.closest && (t.closest("button") || t.closest("input") || t.closest(".modal") || t.closest(".modalBackdrop")));
   }
 
   function handleManualAdvanceIntent() {
@@ -470,6 +468,12 @@
     handleManualAdvanceIntent();
   }
 
+  // #endregion } 
+  // ===== END Trainer Flow =====
+
+  // ===== START Events Setup =====
+  // #region Events 
+  // { 
   openSettingsBtn.addEventListener("click", openModal);
   closeSettingsBtn.addEventListener("click", closeModal);
   settingsBackdrop.addEventListener("click", closeModal);
@@ -496,14 +500,19 @@
     saveConfig();
   });
 
+  function handleManualSetting() {
+    syncManualUI();
+    saveConfig();
+    cleanState();
+  }
   manualSwitchEl.addEventListener("click", () => {
     manualMode = !manualMode;
-    cleanState();
+    handleManualSetting()
   });
 
   manualToggle.addEventListener("change", () => {
     manualMode = !!manualToggle.checked;
-    cleanState();
+    handleManualSetting()
   });
 
   btnOdd.addEventListener("click", () => {
@@ -524,14 +533,11 @@
     }
   });
 
-  resetBtn.addEventListener("click", () => { doFullReset(); });
+  resetBtn.addEventListener("click", () => {
+    doFullReset();
+  });
 
   window.addEventListener("keydown", (e) => {
-    if (e.code === "KeyR") {
-      e.preventDefault();
-      doFullReset();
-      return;
-    }
 
     if (manualMode) {
       switch (e.code) {
@@ -602,6 +608,12 @@
     }
     lastTouchEnd = now;
   }, { passive: false });
+  // #endregion } 
+  // ===== END Events Setup =====
+
+  // --------------
+  // --- SETUP ----
+  // --------------
 
   loadStats();
   loadConfig();
@@ -614,7 +626,8 @@
   syncManualUI();
 
   renderStats();
-  showSingle();
+  showNextColor();
   singleSwatch.style.background = "rgba(255,255,255,0.06)";
   setButtonsEnabled(false);
+
 })();
