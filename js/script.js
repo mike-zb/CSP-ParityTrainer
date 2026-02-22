@@ -6,8 +6,14 @@
     { name: "Blue",   hex: "#4b8bff" },
     { name: "Red",    hex: "#ff4b4b" },
     { name: "Green",  hex: "#3fe08f" },
-    { name: "Orange", hex: "#ff9f43" },
+    { name: "Orange", hex: "#ff9f43" }
   ];
+
+  const Modes = Object.freeze({
+    MANU: "MANU", 
+    AUTO: "AUTO", 
+    INSP: "INSP", 
+  })
 
   // --- Settings UI (modal) ---
   const openSettingsBtn = document.getElementById("openSettings");
@@ -21,8 +27,8 @@
   const explainToggle = document.getElementById("explainToggle");
   const switchEl = document.getElementById("switch");
 
-  const manualToggle = document.getElementById("manualToggle");
-  const manualSwitchEl = document.getElementById("manualSwitch");
+  const modeSelect = document.getElementById("modeSelect");
+
   const delayRow = document.getElementById("delayRow");
 
   // --- Stats UI ---
@@ -33,6 +39,7 @@
   // --- Stage UI ---
   const singleStage = document.getElementById("singleStage");
   const rowNormalEl = document.getElementById("rowNormal");
+  const allSwatches = document.getElementsByClassName("swatch");
   const singleSwatch = document.getElementById("singleSwatch");
 
   const normalSwatches = [
@@ -43,15 +50,13 @@
 
   const btnOdd = document.getElementById("btnOdd");
   const btnEven = document.getElementById("btnEven");
-  const startBtn = document.getElementById("startBtn");
   const resetBtn = document.getElementById("resetScores");
 
   let ms = Number(msRange.value) || 500;
 
-  let manualMode = false;
+  let mode = Modes.AUTO
 
-  // manualStep: 0 idle, 1 showing first, 2 showing second, 3 showing third (awaiting answer)
-  let manualStep = 0;
+  let manualStep = 0; // manualStep: 0 idle, 1 showing first, 2 showing second, 3 showing third (awaiting answer)
   let manualTimerStarted = false;
 
   let running = false;
@@ -61,13 +66,13 @@
   let currentParity = null;
   let currentStrikeIdx = null;
 
-  let score = 0;
-  let total = 0;
+  let scores = {
+    [Modes.AUTO]: { score: 0, total: 0, respSumMs: 0, respCount: 0 },
+    [Modes.MANU]: { score: 0, total: 0, respSumMs: 0, respCount: 0 },
+    [Modes.INSP]: { score: 0, total: 0, respSumMs: 0, respCount: 0 }
+  }
 
-  let responseSumMs = 0;
-  let responseCount = 0;
   let responseStartMs = null;
-
   let blinkTimer = null;
   let blinkOn = true;
   let feedbackTimer = null;
@@ -87,59 +92,84 @@
     try {
       const raw = localStorage.getItem(CONFIG_KEY);
       if (!raw) return;
-      const obj = JSON.parse(raw);
 
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== "object") return;
       if (typeof obj.explain === "boolean") explainToggle.checked = obj.explain;
-      if (typeof obj.manualMode === "boolean") manualMode = obj.manualMode;
+      if (typeof obj.mode === "string" && Object.values(Modes).includes(obj.mode)) mode = obj.mode;
       if (Number.isFinite(obj.ms)) ms = obj.ms;
 
-    } catch { }
+      modeSelect.value = mode;
+
+    } catch {
+      console.error("No settings were retrieved from LocalStorage")
+    }
   }
 
   function saveConfig() {
     try {
       localStorage.setItem(CONFIG_KEY, JSON.stringify({
         explain: explainToggle.checked,
-        manualMode,
+        mode,
         ms
       }));
-    } catch { }
+    } catch { 
+      console.error("Settings could not be saved")
+    }
   }
 
   function loadStats() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return;
+
       const obj = JSON.parse(raw);
-      if (Number.isFinite(obj.score)) score = obj.score;
-      if (Number.isFinite(obj.total)) total = obj.total;
-      if (Number.isFinite(obj.responseSumMs)) responseSumMs = obj.responseSumMs;
-      if (Number.isFinite(obj.responseCount)) responseCount = obj.responseCount;
-    } catch { }
+      if (!obj || typeof obj !== "object") return;
+
+      Object.values(Modes).forEach(mode => {
+        const data = obj[mode];
+        if (!data || typeof data !== "object") return;
+
+        if (Number.isFinite(data.score)) scores[mode].score = data.score; 
+        if (Number.isFinite(data.total)) scores[mode].total = data.total;
+        if (Number.isFinite(data.respSumMs)) scores[mode].respSumMs = data.respSumMs;
+        if (Number.isFinite(data.respCount)) scores[mode].respCount = data.respCount;
+      });
+    } catch { 
+      console.error("No scores were retrieved from LocalStorage")
+    }
   }
 
   function saveStats() {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        score, total, responseSumMs, responseCount
-      }));
-    } catch { }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
+    } catch { 
+      console.error("Scores could not be saved")
+    }
   }
+
   // #endregion } 
   // ===== END CONFIGS =====
 
   // ===== START UI =====
   // #region UI 
   // { 
-  function syncManualUI() {
-    manualToggle.checked = manualMode;
-    manualSwitchEl.classList.toggle("on", manualMode);
+  function syncUI() {
+    switch(mode) {
+      case Modes.AUTO: 
+        delayRow.style.display = "flex";
+        msRange.value = String(ms);
+        msVal.textContent = String(ms);
+        break;
+      case Modes.MANU: 
+        delayRow.style.display = "none";
+        break; 
+      case Modes.INSP:
+        delayRow.style.display = "none";
+        break;
+    }
 
-    delayRow.style.display = manualMode ? "none" : "flex";
-
-    msRange.value = String(ms);
-    msVal.textContent = String(ms);
-
+    renderStats();
   }
 
   function syncExplainUI() {
@@ -152,9 +182,14 @@
   }
 
   function renderStats() {
+    const {score, total, respSumMs, respCount } = getCurrentModeStats ()
+
     scoreEl.textContent = String(score);
     totalEl.textContent = String(total);
-    avgEl.textContent = avgSeconds().toFixed(2);
+
+    let avg = !respCount ? 0 : (respSumMs / respCount) / 1000;
+    avgEl.textContent = avg.toFixed(2);
+
   }
 
   function screenFlashFeedback(ok) {
@@ -177,7 +212,7 @@
     rowNormalEl.style.display = "none";
   }
 
-  function showRoundColors() {
+  function showCurrentRoundCase() {
     singleStage.style.display = "none";
     rowNormalEl.style.display = "flex";
   }
@@ -243,6 +278,11 @@
   // ===== START Helpers =====
   // #region Helpers 
   // {
+
+  function getCurrentModeStats () {
+    return scores[mode];
+  }
+
   function sleep(t) { return new Promise(r => setTimeout(r, t)); }
 
   function strikeIndexByRule(seq) {
@@ -280,10 +320,6 @@
     return PARITIES.has(seq.join(""));
   }
 
-  function avgSeconds() {
-    if (!responseCount) return 0;
-    return (responseSumMs / responseCount) / 1000;
-  }
   // #endregion } 
   // ===== END Logic =====
 
@@ -396,19 +432,22 @@
   }
 
   function submitAnswer(ansIsOdd, sourceBtn) {
+    // debugger; 
     if (!awaitingAnswer) return;
+
+    const stats = getCurrentModeStats()
 
     awaitingAnswer = false;
     setButtonsEnabled(false);
 
-    total++;
-    const isAnswerCorrect = (ansIsOdd === currentParity);
-    if (isAnswerCorrect) score++;
+    stats.total++;
+    const isAnswerCorrect = ansIsOdd === currentParity;
 
+    if (isAnswerCorrect) stats.score++;
     if (responseStartMs != null) {
       const dt = Math.max(0, performance.now() - responseStartMs);
-      responseSumMs += dt;
-      responseCount += 1;
+      stats.respSumMs += dt;
+      stats.respCount += 1;
     }
 
     renderStats();
@@ -418,7 +457,7 @@
     sourceBtn.classList.add(isAnswerCorrect ? "ok" : "bad");
 
     fillNormalRow(currentSeq);
-    showRoundColors();
+    showCurrentRoundCase();
 
     if (explainToggle.checked) {
       currentStrikeIdx = strikeIndexByRule(currentSeq);
@@ -429,11 +468,12 @@
     resetManualCycleState();
   }
 
-  function doFullReset() {
-    score = 0;
-    total = 0;
-    responseSumMs = 0;
-    responseCount = 0;
+  function resetModeStats () {
+    const stats = getCurrentModeStats();
+    stats.score = 0;
+    stats.total = 0;
+    stats.respSumMs = 0;
+    stats.respCount = 0;
     saveStats();
     renderStats();
     cleanState();
@@ -449,7 +489,7 @@
     awaitingAnswer = false;
     running = false;
     resetManualCycleState();
-    singleSwatch.style.background = "rgba(255,255,255,0.06)";
+    singleSwatch.style.background = "rgba(255,255,255,0.00)";
   }
 
   function handleManualAdvanceIntent() {
@@ -495,94 +535,123 @@
     syncExplainUI();
     saveConfig();
   });
+
   explainToggle.addEventListener("change", () => {
     syncExplainUI();
     saveConfig();
   });
 
-  function handleManualSetting() {
-    syncManualUI();
+  function handleModeChange() {
+    // debugger;
+    if(mode === modeSelect.value) return;
+    /* WIP */
+    if(modeSelect.value === Modes.INSP) {
+      alert("WIP - Feature not available yet");
+      modeSelect.value = mode
+      return;
+    }
+    /* WIP */
+    mode = modeSelect.value;
+
     saveConfig();
     cleanState();
+    syncUI();
   }
-  manualSwitchEl.addEventListener("click", () => {
-    manualMode = !manualMode;
-    handleManualSetting()
-  });
 
-  manualToggle.addEventListener("change", () => {
-    manualMode = !!manualToggle.checked;
-    handleManualSetting()
+  modeSelect.addEventListener("change", () => {
+    handleModeChange();
   });
 
   btnOdd.addEventListener("click", () => {
-    if (manualMode) handleManualAnswerOrAdvance(true, btnOdd);
-    else submitAnswer(true, btnOdd);
+    switch(mode) {
+      case Modes.AUTO: submitAnswer(true, btnOdd); break; 
+      case Modes.MANU: handleManualAnswerOrAdvance(true, btnOdd); break;
+      case Modes.INSP: break;
+    }
   });
 
   btnEven.addEventListener("click", () => {
-    if (manualMode) handleManualAnswerOrAdvance(false, btnEven);
-    else submitAnswer(false, btnEven);
+    switch(mode) {
+      case Modes.AUTO: submitAnswer(true, btnEven); break; 
+      case Modes.MANU: handleManualAnswerOrAdvance(false, btnEven); break;
+      case Modes.INSP: break;
+    }
   });
 
-  startBtn.addEventListener("click", () => {
-    if (manualMode) {
-      handleManualAdvanceIntent();
-    } else {
-      startRoundAuto();
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("swatch")) {
+
+      switch (mode) {
+        case Modes.AUTO: startRoundAuto(); break;
+        case Modes.MANU: handleManualAdvanceIntent(); break;
+        case Modes.INSP: break;
+      }
+
     }
   });
 
   resetBtn.addEventListener("click", () => {
-    doFullReset();
+    resetModeStats ();
   });
 
   window.addEventListener("keydown", (e) => {
 
-    if (manualMode) {
-      switch (e.code) {
-        case "Space":
-          e.preventDefault();
-          handleManualAdvanceIntent();
-          break;
-        case "ArrowLeft":
-          e.preventDefault();
-          handleManualAnswerOrAdvance(true, btnOdd);
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          handleManualAnswerOrAdvance(false, btnEven);
-          break;
-      }
-    } else {
-      switch (e.code) {
-        case "Space":
-          e.preventDefault();
-          startRoundAuto();
-          break;
-        case "ArrowLeft":
-          if (!btnOdd.disabled) {
-            submitAnswer(true, btnOdd);
-          } else if (!awaitingAnswer && !running) {
+    switch (mode) {
+      // AUTO
+      case Modes.AUTO:
+        switch (e.code) {
+          case "Space":
             e.preventDefault();
             startRoundAuto();
-          }
-          break;
-        case "ArrowRight":
-          if (!btnEven.disabled) {
-            submitAnswer(false, btnEven);
-          } else if (!awaitingAnswer && !running) {
+            break;
+          case "ArrowLeft":
+          case "KeyA":
+            if (!btnOdd.disabled) {
+              submitAnswer(true, btnOdd);
+            } else if (!awaitingAnswer && !running) {
+              e.preventDefault();
+              startRoundAuto();
+            }
+            break;
+          case "ArrowRight":
+          case "KeyD":
+            if (!btnEven.disabled) {
+              submitAnswer(false, btnEven);
+            } else if (!awaitingAnswer && !running) {
+              e.preventDefault();
+              startRoundAuto();
+            }
+            break;
+        }
+        break;
+      // MANUAL
+      case Modes.MANU:
+        switch (e.code) {
+          case "Space":
             e.preventDefault();
-            startRoundAuto();
-          }
-          break;
-      }
+            handleManualAdvanceIntent();
+            break;
+          case "ArrowLeft":
+          case "KeyA":
+            e.preventDefault();
+            handleManualAnswerOrAdvance(true, btnOdd);
+            break;
+          case "ArrowRight":
+          case "KeyD":
+            e.preventDefault();
+            handleManualAnswerOrAdvance(false, btnEven);
+            break;
+        }
+        break;
+      // INSPECTION
+      case Modes.INSP:
+        break; 
     }
-
+      
   }, { passive: false });
 
   document.addEventListener("touchstart", (e) => {
-    if (!manualMode) return;
+    if (mode !== Modes.MANUAL) return;
     if (document.body.classList.contains("modalOpen")) return;
     if (awaitingAnswer) return;
 
@@ -596,7 +665,7 @@
   let lastTouchEnd = 0;
 
   document.addEventListener("touchend", (e) => {
-    if (!manualMode) return;
+    if (mode !== Modes.MANUAL) return;
     if (document.body.classList.contains("modalOpen")) return;
 
     const t = e.target;
@@ -623,11 +692,11 @@
 
   // switch UIs
   syncExplainUI();
-  syncManualUI();
+  syncUI();
 
   renderStats();
   showNextColor();
-  singleSwatch.style.background = "rgba(255,255,255,0.06)";
+  singleSwatch.style.background = "rgba(255,255,255,0.00)";
   setButtonsEnabled(false);
 
 })();

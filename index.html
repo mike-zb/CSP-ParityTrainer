@@ -44,11 +44,9 @@
         <span class="kbd">Space</span> new round
         <span class="kbd">←</span> Odd
         <span class="kbd">→</span> Even
-        <span class="kbd">R</span> reset
       </div>
 
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
-        <button class="startBtn" id="startBtn" type="button">Start</button>
         <div class="pill">Score: <b id="score">0</b> / <b id="total">0</b></div>
         <div class="pill">Avg time: <b id="avgTime">0.00</b>s</div>
         <button class="resetBtn" id="resetScores" type="button">Reset scores</button>
@@ -77,12 +75,29 @@
         </div>
 
         <div class="settingRow">
-          <div class="settingLabel">Manual mode</div>
-          <div class="toggle">
-            <div class="switch" id="manualSwitch">
-              <div class="knob"></div>
-              <input id="manualToggle" type="checkbox" />
-            </div>
+
+          <div class="settingLabel labelWithInfo">
+            <span>Mode</span>
+            <button id="modeInfo" class="infoBtn" type="button" aria-label="Mode info">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="9"></circle>
+                <line x1="12" y1="10" x2="12" y2="16"></line>
+                <circle cx="12" cy="7" r="1"></circle>
+              </svg>
+              <span class="tip" id="modeTip">
+                <span style="color:#b7c1ff; font-weight:600;">Auto</span>: Shows each color after a set delay<br>
+                <span style="color:#b7c1ff; font-weight:600;">Manual</span>: Advance to the next color manually<br>
+                <span style="color:#b7c1ff; font-weight:600;">Inspection</span>: [WIP] Complete a set of 4 parities back to back (manual)
+              </span>
+            </button>
+          </div>
+
+          <div class="selectWrapper">
+            <select id="modeSelect" class="modeSelect">
+              <option value="AUTO">Auto</option>
+              <option value="MANU">Manual</option>
+              <option value="INSP">Inspection</option>
+            </select>
           </div>
         </div>
 
@@ -94,6 +109,9 @@
           </div>
         </div>
 
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
+          <button class="resetBtn" id="resetScores" type="button">Reset scores</button>
+        </div>
         <div class="hint">
           Manual mode: Space / ← / → advance colors. On 3rd color, next ←/→ answers. Tap anywhere on mobile to advance.
         </div>

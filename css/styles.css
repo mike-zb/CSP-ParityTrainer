@@ -163,6 +163,7 @@ body.bad::before{
   box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
   position:relative;
   overflow:hidden;
+  cursor: pointer;
 }
 
 .strikeOverlay{
@@ -423,7 +424,102 @@ input[type="range"]{
 }
 
 .toggle{ display:flex; align-items:center; gap:10px; }
+
+/* for select mode */
+.selectWrapper {
+  display: flex;
+  align-items: center;
+}
+
+.modeSelect {
+  appearance: none;
+  padding: 6px 28px 6px 10px;
+  border-radius: 10px;
+  background: rgba(26, 32, 48, 0.65);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+}
+
+.modeSelect:hover {
+  border-color: rgba(183, 193, 255, 0.35);
+}
+
+.modeSelect:focus {
+  border-color: rgba(183, 193, 255, 0.50);
+}
+
+.selectWrapper {
+  position: relative;
+}
+
+.selectWrapper::after {
+  content: "▾";
+  position: absolute;
+  right: 12px;
+  font-size: 19px;   
+  color: var(--text);
+  pointer-events: none;
+}
+/* end for select mode */
+
+/* mode info tooltip */
+.labelWithInfo{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.infoBtn{
+  position:relative;
+  width:18px;
+  height:18px;
+  border-radius:999px;
+  border: none; 
+  background: transparent; 
+  color: var(--muted);
+  font-size:12px;
+  font-weight:800;
+  line-height:16px;
+  padding:0;
+  cursor:help;
+}
+
+.infoBtn:hover{ border-color: rgba(183, 193, 255, 0.35); color: var(--text); }
+
+.tip{
+  position:absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(26, 32, 48, 0.95);
+  border: 1px solid rgba(255,255,255,0.10);
+  padding: 8px 10px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: normal; 
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events:none;
+  transition: opacity 120ms ease;
+  z-index: 10;
+}
+
+.infoBtn:hover .tip,
+.infoBtn:focus .tip{
+  opacity: 1;
+}
+
+.tip {
+  text-align: left;
+}
+/* end mode info tooltip */
+
 .switch{
+
   position:relative;
   width:46px;
   height:26px;
