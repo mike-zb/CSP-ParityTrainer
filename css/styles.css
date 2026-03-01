@@ -121,6 +121,7 @@ body.bad::before{
   justify-content:center;
   gap:14px;
   padding:18px 10px 10px;
+  /*min-height: 320px;*/
 }
 
 .box{
@@ -265,14 +266,13 @@ body.bad::before{
   color: rgba(255,255,255,0.85);
 }
 
-.credit a, .credit a:visited, .credit a:hover, .credit a:active{
+.link a, .link a:visited, .link a:hover, .link a:active{
   color: var(--muted);
   text-decoration: none;
   -webkit-tap-highlight-color: transparent;
-
 }
 
-.credit a:hover{
+.link a:hover{
   color: #6ea8ff; 
 }
 

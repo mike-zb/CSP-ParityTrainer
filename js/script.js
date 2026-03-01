@@ -579,8 +579,7 @@
 
   }
 
-  function submitAnswer(ansIsOdd, sourceBtn) {
-    // debugger; 
+  function submitAnswer(sourceBtn) {
     if (!awaitingAnswer) return;
 
     const stats = getCurrentModeStats()
@@ -589,7 +588,8 @@
     setButtonsEnabled(false);
 
     stats.total++;
-    const isAnswerCorrect = ansIsOdd === currrentParityIsOdd;
+    const answerIsOdd = sourceBtn.dataset.parity == "1"
+    const isAnswerCorrect = answerIsOdd === currrentParityIsOdd;
 
 
     if (responseStartMs != null) {
@@ -645,9 +645,9 @@
     singleSwatch.style.background = "rgba(255,255,255,0.00)";
   }
 
-  function handleManualAnswerOrAdvance(ansIsOdd, sourceBtn) {
+  function handleManualAnswerOrAdvance(sourceBtn) {
     if (awaitingAnswer) {
-      submitAnswer(ansIsOdd, sourceBtn);
+      submitAnswer(sourceBtn);
       return;
     }
     handleManualAdvanceIntent();
@@ -718,16 +718,16 @@
 
   btnOdd.addEventListener("click", () => {
     switch(mode) {
-      case Modes.AUTO: submitAnswer(true, btnOdd); break; 
-      case Modes.MANU: handleManualAnswerOrAdvance(true, btnOdd); break;
+      case Modes.AUTO: submitAnswer(btnOdd); break; 
+      case Modes.MANU: handleManualAnswerOrAdvance(btnOdd); break;
       case Modes.INSP: submitInspectionAnswer(btnOdd); break;
     }
   });
 
   btnEven.addEventListener("click", () => {
     switch(mode) {
-      case Modes.AUTO: submitAnswer(true, btnEven); break; 
-      case Modes.MANU: handleManualAnswerOrAdvance(false, btnEven); break;
+      case Modes.AUTO: submitAnswer(btnEven); break; 
+      case Modes.MANU: handleManualAnswerOrAdvance(btnEven); break;
       case Modes.INSP: submitInspectionAnswer(btnEven); break;
     }
   });
@@ -780,38 +780,34 @@
         break;
       // MANUAL
       case Modes.MANU:
+        e.preventDefault();
         switch (e.code) {
           case "Space":
-            e.preventDefault();
             handleManualAdvanceIntent();
             break;
           case "ArrowLeft":
           case "KeyA":
-            e.preventDefault();
             handleManualAnswerOrAdvance(true, btnOdd);
             break;
           case "ArrowRight":
           case "KeyD":
-            e.preventDefault();
             handleManualAnswerOrAdvance(false, btnEven);
             break;
         }
         break;
       // INSPECTION
       case Modes.INSP:
+        e.preventDefault();
         switch (e.code) {
           case "Space":
-            e.preventDefault();
             handleInspection();
             break;
           case "ArrowLeft":
           case "KeyA":
-            e.preventDefault();
             submitInspectionAnswer(btnOdd);
             break;
           case "ArrowRight":
           case "KeyD":
-            e.preventDefault();
             submitInspectionAnswer(btnEven);
             break;
         }
