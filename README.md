@@ -4,8 +4,11 @@ Similar to Squanmate's [parity game](https://squanmate.cuber.pro/#/parity-game) 
 
 Settings: 
 - Show explanation: from [CubeMaster's video](https://www.youtube.com/watch?v=BLVZlRQMbSU), show the color that gets removed.
-- Manual Mode: manually switch to the next color.
-- Delay: time the first two colors are shown before switching to the next (manual mode disabled only).
+- Modes: 
+  - Automatic: Shows each color after a set delay. 
+  - Manual: Advance to the next color manually.
+  - Inspection: Complete a set of 4 parities back to back (manual).
+- Delay: time the first two colors are shown before switching to the next (Automatic mode only).
 
 Parts of this code were generated with the assistance of ChatGPT and reviewed by the author.
 

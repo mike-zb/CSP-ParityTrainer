@@ -2,12 +2,15 @@
   const STORAGE_KEY = "parity_trainer_stats_v1";
   const CONFIG_KEY  = "parity_trainer_config_v1";
 
+
   const COLORS = [
     { name: "Blue",   hex: "#4b8bff" },
     { name: "Red",    hex: "#ff4b4b" },
     { name: "Green",  hex: "#3fe08f" },
     { name: "Orange", hex: "#ff9f43" }
   ];
+
+  const UPDATE_EVERY_MS = 25;
 
   const Modes = Object.freeze({
     MANU: "MANU", 
@@ -52,6 +55,8 @@
   const btnEven = document.getElementById("btnEven");
   const resetBtn = document.getElementById("resetScores");
 
+  const timerText = document.getElementById("roundTimer");
+
   let ms = Number(msRange.value) || 500;
 
   let mode = Modes.AUTO
@@ -59,11 +64,13 @@
   let manualStep = 0; // manualStep: 0 idle, 1 showing first, 2 showing second, 3 showing third (awaiting answer)
   let manualTimerStarted = false;
 
+  let inspectionParityStage = 0;
+
   let running = false;
   let awaitingAnswer = false;
 
   let currentSeq = [];
-  let currentParity = null;
+  let currrentParityIsOdd = null;
   let currentStrikeIdx = null;
 
   let scores = {
@@ -76,6 +83,12 @@
   let blinkTimer = null;
   let blinkOn = true;
   let feedbackTimer = null;
+
+  // timer display
+  let rafId = 0;
+  let lastPaint = 0;
+  let roundTimeMs = null;
+  let roundTimeSec = null;
 
   const PARITIES = new Set([
     "012", "120", "201",
@@ -155,6 +168,8 @@
   // #region UI 
   // { 
   function syncUI() {
+    timerText.textContent = `0.00s`;
+    singleSwatch.textContent = "START"; 
     switch(mode) {
       case Modes.AUTO: 
         delayRow.style.display = "flex";
@@ -186,8 +201,7 @@
 
     scoreEl.textContent = String(score);
     totalEl.textContent = String(total);
-
-    let avg = !respCount ? 0 : (respSumMs / respCount) / 1000;
+    let avg = !score ? 0 : (respSumMs / score) / 1000;
     avgEl.textContent = avg.toFixed(2);
 
   }
@@ -316,7 +330,7 @@
     return arr.slice(0, 3);
   }
 
-  function inversionParity(seq) {
+  function isOddParity(seq) {
     return PARITIES.has(seq.join(""));
   }
 
@@ -327,24 +341,28 @@
   // #region Flow 
   // {
 
-  function startNormalRound() {
+  function clearEffects() {
     stopBlink();
     clearFeedbackColors();
 
     if (feedbackTimer) { clearTimeout(feedbackTimer); feedbackTimer = null; }
+  }
+
+  function startRoundSetUp() {
 
     setButtonsEnabled(false);
     awaitingAnswer = false;
-    responseStartMs = null;
-
+    resetTimer();
+ 
     running = true;
 
     currentSeq = pick3DistinctFrom4();
-    currentParity = inversionParity(currentSeq);
+    currrentParityIsOdd = isOddParity(currentSeq);
     currentStrikeIdx = null;
 
     showNextColor();
 
+    singleSwatch.textContent = ""; 
     singleSwatch.style.background = "rgba(255,255,255,0.06)";
   }
 
@@ -353,7 +371,8 @@
 
     if (running) return;
 
-    startNormalRound();
+    clearEffects();
+    startRoundSetUp();
 
     await sleep(ms);
     setSingleColor(currentSeq[0]);
@@ -364,11 +383,11 @@
     await sleep(ms);
     setSingleColor(currentSeq[2]);
 
-    responseStartMs = performance.now();
+    startTimer();
     awaitingAnswer = true;
     setButtonsEnabled(true);
 
-    await sleep(ms);
+    // await sleep(ms);
 
     running = false;
   }
@@ -378,11 +397,11 @@
 
     if (running) return;
 
-    startNormalRound();
+    clearEffects();
+    startRoundSetUp();
 
     resetManualCycleState();
   }
-
 
   function resetManualCycleState() {
     manualStep = 0;
@@ -393,13 +412,6 @@
     if (feedbackTimer) {
       clearTimeout(feedbackTimer); feedbackTimer = null; 
     }
-    
-
-    if (!running && !awaitingAnswer) {
-      startRoundManualInitial();
-    }
-
-    if (!running && !awaitingAnswer) return;
 
     if (awaitingAnswer) return;
 
@@ -407,8 +419,10 @@
       setSingleColor(currentSeq[0]);
       manualStep = 1;
 
+      singleSwatch.textContent = ""; 
+
       if (!manualTimerStarted) {
-        responseStartMs = performance.now(); 
+        startTimer();
         manualTimerStarted = true;
       }
       return;
@@ -431,6 +445,140 @@
 
   }
 
+  // ---- Inspection Mode  
+  function handleInspection() {
+    if (!running && !awaitingAnswer ) {
+      beginInspectionRound();
+      return;
+    }
+
+    if (awaitingAnswer) return; // answer is handled elsewere 
+
+    // has not started, here it begins 
+    // it started, and it's advancing through manual stages 
+
+    // if advancing, just continue with the next, do nothing to inspection status 
+    inspectionAdvance();
+  }
+
+  function beginInspectionRound() {
+    if (running) return;
+    clearEffects();
+    startRoundSetUp();
+    resetManualCycleState();
+
+    inspectionParityStage = 1; 
+    inspectionRoundSetUp()
+  }
+
+  function inspectionRoundSetUp() {
+
+    setButtonsEnabled(false);
+    awaitingAnswer = false;
+
+    running = true;
+
+    currentSeq = pick3DistinctFrom4();
+    currrentParityIsOdd = isOddParity(currentSeq);
+    currentStrikeIdx = null;
+
+    showNextColor();
+
+    singleSwatch.textContent = inspectionParityStage; 
+    singleSwatch.style.background = "rgba(255,255,255,0.06)";
+  }
+
+  function inspectionAdvance() {
+
+    if (manualStep === 0) {
+      clearEffects()
+      setSingleColor(currentSeq[0]);
+      manualStep = 1;
+
+      singleSwatch.textContent = ""; 
+      if (inspectionParityStage === 1) {
+        startTimer()
+        manualTimerStarted = true;
+      }
+      return;
+    }
+
+    if (manualStep === 1) {
+      setSingleColor(currentSeq[1]);
+      manualStep = 2;
+      return;
+    }
+
+    if (manualStep === 2) {
+      setSingleColor(currentSeq[2]);
+      manualStep = 3;
+
+      awaitingAnswer = true;
+      setButtonsEnabled(true);
+      return;
+    }
+
+  }
+
+  function submitInspectionAnswer(sourceBtn) {
+    if (!awaitingAnswer) return; 
+    awaitingAnswer = false;
+    setButtonsEnabled(false);
+
+    resetManualCycleState();
+    const answerIsOdd = sourceBtn.dataset.parity == "1"
+    const isAnswerCorrect = answerIsOdd === currrentParityIsOdd;
+
+    const stats = getCurrentModeStats()
+    screenFlashFeedback(isAnswerCorrect);
+
+    if (!isAnswerCorrect){
+      inspectionParityStage = 0;
+      // TODO handle wrong response
+
+      sourceBtn.classList.add("bad");
+      stats.total++;
+
+      stopTimer();
+      handleRoundFinish()
+      return; 
+    }
+
+    if(inspectionParityStage < 4 ) {
+      inspectionParityStage++; 
+      inspectionRoundSetUp();
+      singleSwatch.textContent = inspectionParityStage; 
+      return; 
+    } 
+    // stage 4 - handle round finish 
+    stats.total++;
+    stats.score++;
+    sourceBtn.classList.add("ok");
+
+    if (responseStartMs != null) {
+      stopTimer();
+      stats.respSumMs += roundTimeMs;
+      stats.respCount += 1;
+    }
+    handleRoundFinish()
+
+  }
+
+  function handleRoundFinish() {
+    renderStats();
+    saveStats();
+    fillNormalRow(currentSeq);
+    showCurrentRoundCase();
+    if (explainToggle.checked) {
+      currentStrikeIdx = strikeIndexByRule(currentSeq);
+      applyBlinkStrike(currentStrikeIdx);
+    } 
+    running = false;
+
+    inspectionParityStage = 0; 
+
+  }
+
   function submitAnswer(ansIsOdd, sourceBtn) {
     // debugger; 
     if (!awaitingAnswer) return;
@@ -441,13 +589,17 @@
     setButtonsEnabled(false);
 
     stats.total++;
-    const isAnswerCorrect = ansIsOdd === currentParity;
+    const isAnswerCorrect = ansIsOdd === currrentParityIsOdd;
 
-    if (isAnswerCorrect) stats.score++;
+
     if (responseStartMs != null) {
-      const dt = Math.max(0, performance.now() - responseStartMs);
-      stats.respSumMs += dt;
+      stopTimer();
       stats.respCount += 1;
+    }
+
+    if (isAnswerCorrect) {
+      stats.score++;
+      stats.respSumMs += roundTimeMs;
     }
 
     renderStats();
@@ -477,6 +629,7 @@
     saveStats();
     renderStats();
     cleanState();
+    syncUI();
   }
 
   function cleanState() {
@@ -484,12 +637,20 @@
     clearFeedbackColors();
     showNextColor();
     setButtonsEnabled(false);
+    resetTimer();
 
-    responseStartMs = null;
     awaitingAnswer = false;
     running = false;
     resetManualCycleState();
     singleSwatch.style.background = "rgba(255,255,255,0.00)";
+  }
+
+  function handleManualAnswerOrAdvance(ansIsOdd, sourceBtn) {
+    if (awaitingAnswer) {
+      submitAnswer(ansIsOdd, sourceBtn);
+      return;
+    }
+    handleManualAdvanceIntent();
   }
 
   function handleManualAdvanceIntent() {
@@ -500,13 +661,6 @@
     manualAdvanceFromInput();
   }
 
-  function handleManualAnswerOrAdvance(ansIsOdd, sourceBtn) {
-    if (awaitingAnswer) {
-      submitAnswer(ansIsOdd, sourceBtn);
-      return;
-    }
-    handleManualAdvanceIntent();
-  }
 
   // #endregion } 
   // ===== END Trainer Flow =====
@@ -544,7 +698,7 @@
   function handleModeChange() {
     // debugger;
     if(mode === modeSelect.value) return;
-    /* WIP */
+    /* WIP 
     if(modeSelect.value === Modes.INSP) {
       alert("WIP - Feature not available yet");
       modeSelect.value = mode
@@ -566,7 +720,7 @@
     switch(mode) {
       case Modes.AUTO: submitAnswer(true, btnOdd); break; 
       case Modes.MANU: handleManualAnswerOrAdvance(true, btnOdd); break;
-      case Modes.INSP: break;
+      case Modes.INSP: submitInspectionAnswer(btnOdd); break;
     }
   });
 
@@ -574,7 +728,7 @@
     switch(mode) {
       case Modes.AUTO: submitAnswer(true, btnEven); break; 
       case Modes.MANU: handleManualAnswerOrAdvance(false, btnEven); break;
-      case Modes.INSP: break;
+      case Modes.INSP: submitInspectionAnswer(btnEven); break;
     }
   });
 
@@ -584,14 +738,14 @@
       switch (mode) {
         case Modes.AUTO: startRoundAuto(); break;
         case Modes.MANU: handleManualAdvanceIntent(); break;
-        case Modes.INSP: break;
+        case Modes.INSP: handleInspection(); break;
       }
 
     }
   });
 
   resetBtn.addEventListener("click", () => {
-    resetModeStats ();
+    resetModeStats();
   });
 
   window.addEventListener("keydown", (e) => {
@@ -645,13 +799,29 @@
         break;
       // INSPECTION
       case Modes.INSP:
+        switch (e.code) {
+          case "Space":
+            e.preventDefault();
+            handleInspection();
+            break;
+          case "ArrowLeft":
+          case "KeyA":
+            e.preventDefault();
+            submitInspectionAnswer(btnOdd);
+            break;
+          case "ArrowRight":
+          case "KeyD":
+            e.preventDefault();
+            submitInspectionAnswer(btnEven);
+            break;
+        }
         break; 
     }
       
   }, { passive: false });
 
   document.addEventListener("touchstart", (e) => {
-    if (mode !== Modes.MANUAL) return;
+    if (mode === Modes.AUTO) return;
     if (document.body.classList.contains("modalOpen")) return;
     if (awaitingAnswer) return;
 
@@ -665,7 +835,7 @@
   let lastTouchEnd = 0;
 
   document.addEventListener("touchend", (e) => {
-    if (mode !== Modes.MANUAL) return;
+    if (mode === Modes.AUTO) return;
     if (document.body.classList.contains("modalOpen")) return;
 
     const t = e.target;
@@ -679,6 +849,52 @@
   }, { passive: false });
   // #endregion } 
   // ===== END Events Setup =====
+
+
+  // ===== TIMER ====== 
+
+  let timerRunning = false 
+
+  function startTimer() {
+    responseStartMs = performance.now();
+    lastPaint = 0;
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(tick);
+    timerRunning = true; 
+  }
+
+  function stopTimer() {
+    timerRunning = false; 
+    cancelAnimationFrame(rafId);
+    roundTimeMs = (performance.now() - responseStartMs);
+    roundTimeSec = roundTimeMs / 1000;
+    timerText.textContent = `${roundTimeSec.toFixed(2)}s`;
+    responseStartMs = null;
+  }
+
+  function tick(now) {
+
+    if (!timerRunning) return;
+
+    if (now - lastPaint >= UPDATE_EVERY_MS) {
+      lastPaint = now;
+      const elapsed = (now - responseStartMs) / 1000;
+      if(elapsed>= 0) timerText.textContent = `${elapsed.toFixed(2)}s`;
+    }
+
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function resetTimer() {
+    timerRunning = false; 
+    responseStartMs = null
+    timerText.textContent = "0.00s";
+    roundTimeMs = 0
+    roundTimeSec = 0
+  }
+
+
+
 
   // --------------
   // --- SETUP ----

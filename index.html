@@ -33,19 +33,17 @@
       </div>
 
       <div class="answers">
-        <button class="btn" id="btnOdd" disabled>Odd</button>
-        <button class="btn" id="btnEven" disabled>Even</button>
+        <button class="btn" id="btnOdd" data-parity="1" disabled>Odd</button>
+        <button class="btn" id="btnEven" data-parity="0" disabled>Even</button>
       </div>
     </div>
 
-    <div class="footer">
-      <div class="help" aria-label="Controls help">
-        Controls:
-        <span class="kbd">Space</span> new round
-        <span class="kbd">←</span> Odd
-        <span class="kbd">→</span> Even
-      </div>
+    <div class="roundTimer" id="roundTimer">0.00s</div>
 
+    <div class="footer">
+      <div class="credit">
+        Created by <a href="https://github.com/mike-zb" target="_blank">MikeZb</a>
+      </div>
       <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;">
         <div class="pill">Score: <b id="score">0</b> / <b id="total">0</b></div>
         <div class="pill">Avg time: <b id="avgTime">0.00</b>s</div>
@@ -86,7 +84,7 @@
               <span class="tip" id="modeTip">
                 <span style="color:#b7c1ff; font-weight:600;">Auto</span>: Shows each color after a set delay<br>
                 <span style="color:#b7c1ff; font-weight:600;">Manual</span>: Advance to the next color manually<br>
-                <span style="color:#b7c1ff; font-weight:600;">Inspection</span>: [WIP] Complete a set of 4 parities back to back (manual)
+                <span style="color:#b7c1ff; font-weight:600;">Inspection</span>: Complete a set of 4 parities back to back (manual)
               </span>
             </button>
           </div>
@@ -114,6 +112,14 @@
         <div class="hint">
           Manual mode: Space / ← / → advance colors. On 3rd color, next ←/→ answers. Tap anywhere on mobile to advance.
         </div>
+
+        <div class="help" aria-label="Controls help">
+          Controls:
+          <span class="kbd">Space</span>New round
+          <span class="kbd">←</span>Odd
+          <span class="kbd">→</span>Even
+        </div>
+
       </div>
     </div>
   </div>
