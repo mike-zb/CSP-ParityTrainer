@@ -121,7 +121,6 @@ body.bad::before{
   justify-content:center;
   gap:14px;
   padding:18px 10px 10px;
-  min-height: 320px;
 }
 
 .box{
@@ -164,6 +163,11 @@ body.bad::before{
   position:relative;
   overflow:hidden;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 28px;
 }
 
 .strikeOverlay{
@@ -248,6 +252,29 @@ body.bad::before{
     inset 0 0 18px rgba(var(--bad), 0.10);
 }
 .btn.ok:disabled, .btn.bad:disabled{ opacity:1; }
+
+.roundTimer{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin: 16px 0;
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.5px;
+  font-variant-numeric: tabular-nums;
+  color: rgba(255,255,255,0.85);
+}
+
+.credit a, .credit a:visited, .credit a:hover, .credit a:active{
+  color: var(--muted);
+  text-decoration: none;
+  -webkit-tap-highlight-color: transparent;
+
+}
+
+.credit a:hover{
+  color: #6ea8ff; 
+}
 
 .footer{
   margin-top:12px;
